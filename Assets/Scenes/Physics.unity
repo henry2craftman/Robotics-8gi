@@ -1363,7 +1363,7 @@ Transform:
   m_GameObject: {fileID: 159681155}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.019, y: 2.271, z: -0.105}
+  m_LocalPosition: {x: 0.024, y: 1.769, z: -0.105}
   m_LocalScale: {x: 0.15147, y: 0.15147, z: 0.15147}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2020,7 +2020,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   pinballManager: {fileID: 908203380}
-  myPoint: 0
+  myPoint: 5
 --- !u!1 &261178701
 GameObject:
   m_ObjectHideFlags: 0
@@ -4527,7 +4527,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   pinballManager: {fileID: 908203380}
-  myPoint: 0
+  myPoint: 1
 --- !u!1 &744519389
 GameObject:
   m_ObjectHideFlags: 0
@@ -9339,7 +9339,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   pinballManager: {fileID: 908203380}
-  myPoint: 0
+  myPoint: 3
 --- !u!1 &1823688464
 GameObject:
   m_ObjectHideFlags: 0

@@ -21,7 +21,6 @@ public class Handle : MonoBehaviour
                 Rigidbody rb = collision.gameObject.GetComponent<Rigidbody>();
                 rb.AddForce(contact * forcePower, ForceMode.Impulse);
             }
-
         }
     }
 }

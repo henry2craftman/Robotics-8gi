@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using UnityEngine;
 
 public class CylinderSensor : MonoBehaviour
 {
@@ -8,5 +9,22 @@ public class CylinderSensor : MonoBehaviour
     {
         if(other.tag == "금속")
             isDetected = true;
+    }
+
+    private void Update()
+    {
+
+    }
+
+    public void MovePusher()
+    {
+        StartCoroutine(Move());
+    }
+
+    IEnumerator Move()
+    {
+
+     yield return null;
+        
     }
 }

@@ -7,6 +7,7 @@ TagManager:
   - CinemachineTarget
   - "\uAE08\uC18D"
   - Ball
+  - Box
   layers:
   - Default
   - TransparentFX
