@@ -1,0 +1,35 @@
+﻿<Window x:Class="MxComponentWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MxComponentWPF"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="492" Width="800" Closed="DisconnectBtnClkEvent">
+    <Grid>
+        <Button Content="연결" HorizontalAlignment="Left" Margin="39,34,0,0" VerticalAlignment="Top" Height="58" Width="138" Click="ConnectBtnClkEvent"/>
+        <Button Content="연결해지" HorizontalAlignment="Left" Margin="191,34,0,0" VerticalAlignment="Top" Height="58" Width="138" Click="DisconnectBtnClkEvent"/>
+        <TextBox x:Name="deviceNameTB" HorizontalAlignment="Left" Margin="39,130,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="40"/>
+        <Button Content="GetDevice" HorizontalAlignment="Left" Margin="191,130,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="GetDeviceBtnClkEvent"/>
+        <Button Content="SetDevice" HorizontalAlignment="Left" Margin="500,130,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="SetDeviceBtnClkEvent"/>
+        <TextBox x:Name="valueTB" HorizontalAlignment="Left" Margin="343,130,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <TextBox x:Name="deviceNameTB2" HorizontalAlignment="Left" Margin="39,208,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <TextBox x:Name="blockSizeTB" HorizontalAlignment="Left" Margin="191,208,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <TextBox x:Name="deviceValues" HorizontalAlignment="Left" Margin="343,208,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <Button Content="Read Device Block" HorizontalAlignment="Left" Margin="500,210,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="RDBBtnClkEvent"/>
+        <Label Content="디바이스 이름" HorizontalAlignment="Left" Margin="40,104,0,0" VerticalAlignment="Top"/>
+        <Label Content="값" HorizontalAlignment="Left" Margin="343,104,0,0" VerticalAlignment="Top"/>
+        <Label Content="디바이스블록 주소" HorizontalAlignment="Left" Margin="40,182,0,0" VerticalAlignment="Top"/>
+        <Label Content="블록 개수" HorizontalAlignment="Left" Margin="191,182,0,0" VerticalAlignment="Top"/>
+        <Label Content="값들" HorizontalAlignment="Left" Margin="343,182,0,0" VerticalAlignment="Top"/>
+        <Button Content="Write Device Block" HorizontalAlignment="Left" Margin="500,255,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="WDBBtnClkEvent"/>
+        <TextBox x:Name="deviceNameTB3" HorizontalAlignment="Left" Margin="39,322,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <TextBox x:Name="blockSizeTB3" HorizontalAlignment="Left" Margin="191,322,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <TextBox x:Name="deviceValues3" HorizontalAlignment="Left" Margin="343,322,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
+        <Button Content="Read Device Random" HorizontalAlignment="Left" Margin="500,324,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="RDRBtnClkEvent"/>
+        <Label Content="디바이스블록 주소들" HorizontalAlignment="Left" Margin="40,296,0,0" VerticalAlignment="Top"/>
+        <Label Content="블록 개수" HorizontalAlignment="Left" Margin="191,296,0,0" VerticalAlignment="Top"/>
+        <Label Content="값들" HorizontalAlignment="Left" Margin="343,296,0,0" VerticalAlignment="Top"/>
+        <Button Content="Write Device Random" HorizontalAlignment="Left" Margin="500,368,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="WDRBtnClkEvent"/>
+    </Grid>
+</Window>
