@@ -249,7 +249,7 @@ MessageBoxButton.OK, MessageBoxImage.Exclamation);
             string[] deviceNames = temp.Split("\n");
             if(deviceNames.Length != blockSize)
             {
-                MessageBox.Show("디바이스 이름의 개수와 블록사이즈를 일치시켜 주세요.", "Error",
+                MessageBox.Show("디바이스 이름들과 디바이스 개수를 일치시켜 주세요.", "Error",
 MessageBoxButton.OK, MessageBoxImage.Exclamation);
 
                 return;
@@ -267,7 +267,7 @@ MessageBoxButton.OK, MessageBoxImage.Exclamation);
             if (iRet == 0)
             {
                 MessageBox.Show($"값들을 성공적으로 읽어왔습니다.\n" +
-                    $"{deviceNameTB3.Text}: {valueStr}", "Error",
+                    $"{deviceNameTB3.Text}\n{valueStr}", "Read Device Random",
 MessageBoxButton.OK, MessageBoxImage.Exclamation);
             }
             else
@@ -289,7 +289,64 @@ MessageBoxButton.OK, MessageBoxImage.Exclamation);
         // Write Device Random
         private void WDRBtnClkEvent(object sender, RoutedEventArgs e)
         {
+            if (deviceNameTB3.Text == "" || blockSizeTB3.Text == "" || deviceValues3.Text == "")
+            {
+                MessageBox.Show("내용을 입력해 주세요.", "Error", MessageBoxButton.OK, MessageBoxImage.Exclamation);
 
+                return;
+            }
+
+            int blockSize;
+            bool isParsed = Int32.TryParse(blockSizeTB3.Text, out blockSize);
+
+            if (!isParsed)
+            {
+                MessageBox.Show("블록에 들어갈 입력을 양의 정수형으로 입력해 주세요.", "Error",
+MessageBoxButton.OK, MessageBoxImage.Exclamation);
+
+                return;
+            }
+
+            string temp = deviceNameTB3.Text.Replace("\\n", "\n");
+            string[] deviceNames = temp.Split("\n");
+            string[] splitedValues = deviceValues3.Text.Split(','); // 1,0,20
+
+            if (deviceNames.Length != blockSize || splitedValues.Length != blockSize)
+            {
+                MessageBox.Show("디바이스 이름들과 디바이스 개수 또는 디바이스 값들의 수와 디바이스 개수를 일치시켜 주세요.", "Error",
+MessageBoxButton.OK, MessageBoxImage.Exclamation);
+
+                return;
+            }
+
+            int[] values = new int[blockSize];
+            string valueStr = "";
+            for (int i = 0; i < splitedValues.Length; i++)
+            {
+                isParsed = Int32.TryParse(splitedValues[i], out values[i]);
+                valueStr += values[i].ToString() + " ";
+
+                if (!isParsed)
+                {
+                    MessageBox.Show("디바이스 값에 정수형이 아닌 수가 있습니다. 다시 확인해주세요", "Error",
+MessageBoxButton.OK, MessageBoxImage.Exclamation);
+
+                    return;
+                }
+            }
+
+            int iRet = mxComponent.WriteDeviceRandom(temp, blockSize, ref values[0]);
+
+            if (iRet == 0)
+            {
+                MessageBox.Show($"값 쓰기가 완료되었습니다..\n" +
+                    $"{deviceNameTB3.Text}\n{valueStr}", "Write Device Random",
+MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
+            else
+            {
+                MessageBox.Show(iRet.ToString("X"), "Error", MessageBoxButton.OK, MessageBoxImage.Exclamation);
+            }
         }
     }
 }

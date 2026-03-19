@@ -28,7 +28,7 @@
         <TextBox x:Name="deviceValues3" HorizontalAlignment="Left" Margin="343,322,0,0" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138" Height="42"/>
         <Button Content="Read Device Random" HorizontalAlignment="Left" Margin="500,324,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="RDRBtnClkEvent"/>
         <Label Content="디바이스블록 주소들" HorizontalAlignment="Left" Margin="40,296,0,0" VerticalAlignment="Top"/>
-        <Label Content="블록 개수" HorizontalAlignment="Left" Margin="191,296,0,0" VerticalAlignment="Top"/>
+        <Label Content="디바이스 개수" HorizontalAlignment="Left" Margin="191,296,0,0" VerticalAlignment="Top"/>
         <Label Content="값들" HorizontalAlignment="Left" Margin="343,296,0,0" VerticalAlignment="Top"/>
         <Button Content="Write Device Random" HorizontalAlignment="Left" Margin="500,368,0,0" VerticalAlignment="Top" Height="40" Width="138" Click="WDRBtnClkEvent"/>
     </Grid>
