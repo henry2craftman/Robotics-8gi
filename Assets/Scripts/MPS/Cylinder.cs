@@ -135,13 +135,11 @@ public class Cylinder : MonoBehaviour
                     {
                         TurnOnLS(false, true); // Front ON
                         TurnOnLS(true, false); // Back OFF
-                        print("Front ON");
                     }
                     else if(isBack)
                     {
                         TurnOnLS(true, true);   // Back ON
                         TurnOnLS(false, false); // Front OFF
-                        print("Back ON");
                     }
 
                     break;
@@ -156,8 +154,6 @@ public class Cylinder : MonoBehaviour
         {
             TurnOnLS(true, false);  // Back LS OFF
             TurnOnLS(false, false); // Front LS OFF
-
-            print("Back/Front OFF");
         }
     }
 

@@ -4,6 +4,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 using Sensor = MPS.Sensor;
+using System.Diagnostics;
+using Debug = UnityEngine.Debug;
+using System.Threading.Tasks;
+using System.Threading;
 
 /// <summary>
 /// PLC의 디바이스 커멘트(디바이스맵) 기반의 신호를 확인 후 디지털 트윈에 연동
@@ -55,6 +59,9 @@ namespace MPS
 {
     public class MxComponent : MonoBehaviour
     {
+        Stopwatch stopwatch = new Stopwatch();
+        CancellationTokenSource cts;
+
         [Header("PLC 데이터 관련")]
         ActUtlType64 mxComponent;
         public bool isConnected;
@@ -89,15 +96,23 @@ namespace MPS
 
             plcXData = new int[xDeviceBlockNum];
             plcYData = new bool[yDeviceBlockNum, 16];
+
+            cts = new CancellationTokenSource();
         }
 
         private void Update()
         {
             if(isConnected)
             {
+                //stopwatch.Reset();
+                //stopwatch.Start();
+
                 ApplyYData();
 
                 ApplyXData();
+
+                //stopwatch.Stop();
+                //Debug.Log($"[Apply Data] {stopwatch.ElapsedMilliseconds}ms");
             }
         }
 
@@ -107,7 +122,7 @@ namespace MPS
             //                  true -> 1 / false -> 0
             string btnStr = $"{(isEStopBtnActive == true ? 1 : 0)}{(isStopBtnActive == true ? 1 : 0)}" +
                             $"{(isStartBtnActive == true ? 1 : 0)}";
-            int btnBlock = Convert.ToInt32(btnStr, 2);
+            int btnBlock = Convert.ToInt32(btnStr, 2); // "101" -> 5
             plcXData[0] = btnBlock; // 5
 
             btnStr = $"{(cylinder4.frontSignal_LS == true ? 1 : 0)}{(cylinder4.backSignal_LS == true ? 1 : 0)}" +
@@ -149,7 +164,8 @@ namespace MPS
             {
                 isConnected = true;
 
-                StartCoroutine(UpdatePLCData());
+                // StartCoroutine(UpdatePLCData());
+                Task.Run(() => UpdatePLCData(cts)); // Worker thread 시작
 
                 Debug.Log("기기가 성공적으로 연결되었습니다!");
             }
@@ -175,17 +191,41 @@ namespace MPS
             }
         }
 
+        // 다른 스레드에서 실행
         IEnumerator UpdatePLCData()
         {
             yield return new WaitForEndOfFrame();
 
             while(isConnected)
             {
+                //stopwatch.Reset();
+                //stopwatch.Start();
+                ReadDeviceBlock("Y0", 2);
+                //stopwatch.Stop();
+                //Debug.Log($"[Read Device] {stopwatch.ElapsedMilliseconds}ms");
+
+                //stopwatch.Reset();
+                //stopwatch.Start();
+                WriteDeviceBlock("X0", 3, ref plcXData);
+                //stopwatch.Stop();
+                //Debug.Log($"[Write Device] {stopwatch.ElapsedMilliseconds}ms");
+
+                yield return new WaitForSeconds(updateInterval);
+            }
+        }
+
+        // MxComponent 객체 생성안됨... ->  STA(Single-Threaded Apartment) -> 각 스레드에서 객체를 따로 관리할 수 있도록
+        async Task UpdatePLCData(CancellationTokenSource cts)
+        {
+            while (isConnected)
+            {
                 ReadDeviceBlock("Y0", 2);
 
                 WriteDeviceBlock("X0", 3, ref plcXData);
 
-                yield return new WaitForSeconds(updateInterval);
+                int newInterval = Convert.ToInt32(updateInterval * 1000);
+
+                await Task.Delay(newInterval, cts.Token);
             }
         }
 
@@ -208,15 +248,15 @@ namespace MPS
 
         private void ConvertYData(int[] data)
         {
-            // { 85, 47 } -> 85를 2진수로 변경 0000 0000 0101 0101
+            // { 85, 47 } -> 85를 2진수로 0000 0000 0101 0101
             int j = 0;
             foreach (int d in data)
             {
                 bool[] block = new bool[16];
 
                 for (int i = 0; i < block.Length; i++)
-                {
-                    bool isBitSet = (d & (1 << i)) != 0; // 비트 비교 연산
+                {                   // 비트연산 + 조건문
+                    bool isBitSet = ((d & (1 << i)) != 0); // 비트 비교 연산
 
                     plcYData[j, i] = isBitSet;
                 }
@@ -229,6 +269,14 @@ namespace MPS
         public void WriteDeviceBlock(string startDevice, int blockNum, ref int[] data)
         {
             mxComponent.WriteDeviceBlock(startDevice, blockNum, ref data[0]);
+        }
+
+        private void OnDestroy()
+        {
+            Close();
+
+            cts.Cancel();
+            cts.Dispose();
         }
     }
 }

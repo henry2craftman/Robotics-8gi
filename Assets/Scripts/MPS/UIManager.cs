@@ -49,5 +49,22 @@ namespace MPS
         {
             loader.loadSignal = !loader.loadSignal;
         }
+
+        public void OnStartBtnClkEvent(MxComponent mxComponent)
+        {
+            mxComponent.isStartBtnActive = !mxComponent.isStartBtnActive;
+            mxComponent.isStopBtnActive = false;
+        }
+        public void OnStopBtnClkEvent(MxComponent mxComponent)
+        {
+            mxComponent.isStopBtnActive = !mxComponent.isStopBtnActive;
+            mxComponent.isStartBtnActive = false;
+        }
+        public void OnEStopBtnClkEvent(MxComponent mxComponent)
+        {
+            mxComponent.isEStopBtnActive = !mxComponent.isEStopBtnActive;
+            mxComponent.isStartBtnActive = false;
+            mxComponent.isStopBtnActive = false;
+        }
     }
 }
