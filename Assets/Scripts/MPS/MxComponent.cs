@@ -164,8 +164,7 @@ namespace MPS
             {
                 isConnected = true;
 
-                // StartCoroutine(UpdatePLCData());
-                Task.Run(() => UpdatePLCData(cts)); // Worker thread 시작
+                StartCoroutine(UpdatePLCData());
 
                 Debug.Log("기기가 성공적으로 연결되었습니다!");
             }
@@ -173,6 +172,28 @@ namespace MPS
             {
                 Debug.LogWarning("연결이 실패하였습니다. " + iRet.ToString("X"));
             }
+        }
+
+        ActUtlType64 mxComponentAsync;
+        public void OpenByNewThread()
+        {
+            Task.Run(() =>
+            {
+                mxComponentAsync = new ActUtlType64();
+
+                int iRet = mxComponentAsync.Open();
+
+                if(iRet == 0)
+                {
+                    isConnected = true;
+
+                    UpdatePLCData(mxComponentAsync, cts);
+                }
+                else
+                {
+                    Debug.LogWarning("연결이 실패하였습니다. " + iRet.ToString("X"));
+                }
+            });
         }
 
         public void Close()
@@ -191,7 +212,11 @@ namespace MPS
             }
         }
 
-        // 다른 스레드에서 실행
+        public void CloseByNewThread()
+        {
+            isConnected = false;
+        }
+
         IEnumerator UpdatePLCData()
         {
             yield return new WaitForEndOfFrame();
@@ -214,18 +239,29 @@ namespace MPS
             }
         }
 
+        // 단일 스레드 원칙(STA, Single-Threaded Apartment)
+        // 객체지향언어 스레드 사용시, 객체를 만들때는 각 스레드에서 만들어야 한다.
         // MxComponent 객체 생성안됨... ->  STA(Single-Threaded Apartment) -> 각 스레드에서 객체를 따로 관리할 수 있도록
-        async Task UpdatePLCData(CancellationTokenSource cts)
+        async Task UpdatePLCData(ActUtlType64 mxComponent, CancellationTokenSource cts)
         {
             while (isConnected)
             {
-                ReadDeviceBlock("Y0", 2);
+                ReadDeviceBlock(mxComponent, "Y0", 2);
 
-                WriteDeviceBlock("X0", 3, ref plcXData);
+                WriteDeviceBlock(mxComponent, "X0", 3, ref plcXData);
 
-                int newInterval = Convert.ToInt32(updateInterval * 1000);
+                await Task.Delay((int)updateInterval);
+            }
 
-                await Task.Delay(newInterval, cts.Token);
+            int iRet = mxComponent.Close();
+
+            if (iRet == 0)
+            {
+                Debug.Log("기기가 성공적으로 연결해지 되었습니다!");
+            }
+            else
+            {
+                Debug.LogWarning("연결해지가 실패하였습니다. " + iRet.ToString("X"));
             }
         }
 
@@ -237,6 +273,22 @@ namespace MPS
             int iRet = mxComponent.ReadDeviceBlock(startDevice, blockNum, out data[0]);
 
             if(iRet == 0)
+            {
+                ConvertYData(data);
+            }
+            else
+            {
+                Debug.LogWarning("ERROR: " + iRet.ToString("X"));
+            }
+        }
+
+        public void ReadDeviceBlock(ActUtlType64 mxComponent, string startDevice, int blockNum)
+        {
+            int[] data = new int[blockNum];
+
+            int iRet = mxComponent.ReadDeviceBlock(startDevice, blockNum, out data[0]);
+
+            if (iRet == 0)
             {
                 ConvertYData(data);
             }
@@ -267,6 +319,11 @@ namespace MPS
 
         // PC -> PLC
         public void WriteDeviceBlock(string startDevice, int blockNum, ref int[] data)
+        {
+            mxComponent.WriteDeviceBlock(startDevice, blockNum, ref data[0]);
+        }
+
+        public void WriteDeviceBlock(ActUtlType64 mxComponent, string startDevice, int blockNum, ref int[] data)
         {
             mxComponent.WriteDeviceBlock(startDevice, blockNum, ref data[0]);
         }
