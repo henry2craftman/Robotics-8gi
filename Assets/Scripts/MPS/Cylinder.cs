@@ -131,15 +131,19 @@ public class Cylinder : MonoBehaviour
                 {
                     isMoving = false;
 
-                    if (!isBack) // 앞쪽 끝에 왔을 때
+                    if (frontSignal_SOL) // 앞쪽 끝에 왔을 때
                     {
                         TurnOnLS(false, true); // Front ON
                         TurnOnLS(true, false); // Back OFF
+
+                        isBack = false;
                     }
-                    else if(isBack)
+                    else if(!frontSignal_SOL || (solenoidType == SolenoidType.복동형 && backSignal_SOL))
                     {
                         TurnOnLS(true, true);   // Back ON
                         TurnOnLS(false, false); // Front OFF
+
+                        isBack = true;
                     }
 
                     break;
@@ -163,14 +167,12 @@ public class Cylinder : MonoBehaviour
         {
             if(solenoidType == SolenoidType.단동형)
             {
-                yield return new WaitUntil(() => frontSignal_SOL);
+                yield return new WaitUntil(() => frontSignal_SOL && isBack);
             }
             else
             {
-                yield return new WaitUntil(() => frontSignal_SOL);
+                yield return new WaitUntil(() => frontSignal_SOL && isBack);
             }
-
-            isBack = false;
 
             Vector3 dir = new Vector3(rod.localPosition.x, maxPos, rod.localPosition.z);
             yield return MoveCylinder(dir);
@@ -183,14 +185,12 @@ public class Cylinder : MonoBehaviour
         {
             if (solenoidType == SolenoidType.단동형)
             {
-                yield return new WaitUntil(() => !frontSignal_SOL);
+                yield return new WaitUntil(() => !frontSignal_SOL && !isBack);
             }
             else
             {
-                yield return new WaitUntil(() => backSignal_SOL);
+                yield return new WaitUntil(() => backSignal_SOL && !isBack);
             }
-
-            isBack = true;
 
             Vector3 dir = new Vector3(rod.localPosition.x, minPos, rod.localPosition.z);
             yield return MoveCylinder(dir);

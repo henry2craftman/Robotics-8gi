@@ -46,13 +46,13 @@ using System.Threading;
 // Y3	SOL3 - 송출전진
 // Y4	SOL4 - 송출후진
 // Y5	SOL5 - 배출전진
-// Y6	SOL6 - 배출후진
+// Y6	SOL6 - 배출후진  
 // Y10	RED LAMP
 // Y11	YELLOW LAMP
 // Y12	GREEN LAMP
 // Y13	CONV CW
 // Y14	CONV CCW
-// Y15	LOADER
+// Y15	LOADER     
 /// </summary>
 /// 
 namespace MPS
@@ -246,11 +246,18 @@ namespace MPS
         {
             while (isConnected)
             {
-                ReadDeviceBlock(mxComponent, "Y0", 2);
+                try
+                {
+                    ReadDeviceBlock(mxComponent, "Y0", 2);
 
-                WriteDeviceBlock(mxComponent, "X0", 3, ref plcXData);
+                    WriteDeviceBlock(mxComponent, "X0", 3, ref plcXData);
 
-                await Task.Delay((int)updateInterval);
+                    await Task.Delay((int)updateInterval);
+                }
+                catch(Exception e)
+                {
+                    Debug.Log(e);
+                }
             }
 
             int iRet = mxComponent.Close();
@@ -330,7 +337,7 @@ namespace MPS
 
         private void OnDestroy()
         {
-            Close();
+            CloseByNewThread();
 
             cts.Cancel();
             cts.Dispose();
