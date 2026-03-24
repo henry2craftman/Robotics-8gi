@@ -137,6 +137,8 @@ public class Cylinder : MonoBehaviour
                         TurnOnLS(true, false); // Back OFF
 
                         isBack = false;
+
+                        Debug.Log("전진완료!");
                     }
                     else if(!frontSignal_SOL || (solenoidType == SolenoidType.복동형 && backSignal_SOL))
                     {
@@ -144,6 +146,8 @@ public class Cylinder : MonoBehaviour
                         TurnOnLS(false, false); // Front OFF
 
                         isBack = true;
+
+                        Debug.Log("후진완료!");
                     }
 
                     break;

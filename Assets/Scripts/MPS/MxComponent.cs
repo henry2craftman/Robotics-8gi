@@ -27,34 +27,34 @@ using System.Threading;
 // X0    START BTN
 // X1	 STOP BTN
 // X2	 E-STOP BTN
-// X10	 LS0
-// X11	 LS1
-// X12	 LS2
-// X13	 LS3
-// X14	 LS4
-// X15	 LS5
-// X16	 LS6
-// X17	 LS7
+// X10	 LS0 - 공급후방
+// X11	 LS1 - 공급전방
+// X12	 LS2 - 가공후방
+// X13	 LS3 - 가공전방
+// X14	 LS4 - 송출후방
+// X15	 LS5 - 송출전방
+// X16	 LS6 - 배출후방
+// X17	 LS7 - 배출전방
 // X20	 LOADER SENSOR
 // X21	 PROX SENSOR
-// X22	 METAL SENSOR
+// X22	 METAL SENSOR  
 // 
 // 출력 디바이스(12개)
-// Y0   SOL0 - 공급전진
-// Y1	SOL1 - 공급후진
+// Y0   SOL0 - 공급후진
+// Y1	SOL1 - 공급전진
 // Y2	SOL2 - 가공전후진
-// Y3	SOL3 - 송출전진
-// Y4	SOL4 - 송출후진
-// Y5	SOL5 - 배출전진
-// Y6	SOL6 - 배출후진  
+// Y3	SOL3 - 송출후진
+// Y4	SOL4 - 송출전진
+// Y5	SOL5 - 배출후진
+// Y6	SOL6 - 배출전진   
 // Y10	RED LAMP
 // Y11	YELLOW LAMP
 // Y12	GREEN LAMP
 // Y13	CONV CW
 // Y14	CONV CCW
-// Y15	LOADER     
+// Y15	LOADER              
 /// </summary>
-/// 
+
 namespace MPS
 {
     public class MxComponent : MonoBehaviour
@@ -65,11 +65,14 @@ namespace MPS
         [Header("PLC 데이터 관련")]
         ActUtlType64 mxComponent;
         public bool isConnected;
-        public float updateInterval = 1;
+        public float updateInterval = 1f; // 단위: 초
         public int xDeviceBlockNum = 3;
         public int yDeviceBlockNum = 2;
+
+        // --- [FIX 4] race condition 방지를 위한 lock 객체 및 버퍼 분리 ---
+        private readonly object dataLock = new object();
         private int[] plcXData = new int[3];
-        bool[,] plcYData = new bool[2, 16];
+        private bool[,] plcYData = new bool[2, 16];
 
         [Header("출력 가상장비 리스트")]
         public Cylinder cylinder1; // 공급(양솔)
@@ -88,6 +91,10 @@ namespace MPS
         public Sensor proxSensor;
         public Sensor metalSensor;
 
+        // --- [FIX 2] 현재 활성 연결 방식을 추적하는 열거형 ---
+        private enum ConnectionMode { None, Main, Async }
+        private ConnectionMode currentConnectionMode = ConnectionMode.None;
+
         // 객체 초기화 용도
         private void Awake()
         {
@@ -102,58 +109,66 @@ namespace MPS
 
         private void Update()
         {
-            if(isConnected)
+            if (isConnected)
             {
-                //stopwatch.Reset();
-                //stopwatch.Start();
-
                 ApplyYData();
-
                 ApplyXData();
-
-                //stopwatch.Stop();
-                //Debug.Log($"[Apply Data] {stopwatch.ElapsedMilliseconds}ms");
             }
         }
 
         private void ApplyXData()
         {
-            // { 5, 126, 5 }
-            //                  true -> 1 / false -> 0
-            string btnStr = $"{(isEStopBtnActive == true ? 1 : 0)}{(isStopBtnActive == true ? 1 : 0)}" +
-                            $"{(isStartBtnActive == true ? 1 : 0)}";
-            int btnBlock = Convert.ToInt32(btnStr, 2); // "101" -> 5
-            plcXData[0] = btnBlock; // 5
+            // --- [FIX 5] PLC 디바이스 주소 기준: X0=bit0(START), X1=bit1(STOP), X2=bit2(ESTOP) ---
+            // LSB(오른쪽)가 낮은 주소이므로 bit0=START, bit1=STOP, bit2=ESTOP 순으로 구성
+            int btnBlock = (isStartBtnActive ? (1 << 0) : 0)
+                         | (isStopBtnActive ? (1 << 1) : 0)
+                         | (isEStopBtnActive ? (1 << 2) : 0);
 
-            btnStr = $"{(cylinder4.frontSignal_LS == true ? 1 : 0)}{(cylinder4.backSignal_LS == true ? 1 : 0)}" +
-                     $"{(cylinder3.frontSignal_LS == true ? 1 : 0)}{(cylinder3.backSignal_LS == true ? 1 : 0)}" +
-                     $"{(cylinder2.frontSignal_LS == true ? 1 : 0)}{(cylinder2.backSignal_LS == true ? 1 : 0)}" +
-                     $"{(cylinder1.frontSignal_LS == true ? 1 : 0)}{(cylinder1.backSignal_LS == true ? 1 : 0)}";
-            btnBlock = Convert.ToInt32(btnStr, 2);
-            plcXData[1] = btnBlock; // 126
+            int lsBlock = (cylinder1.backSignal_LS ? (1 << 0) : 0)  // X10
+                        | (cylinder1.frontSignal_LS ? (1 << 1) : 0)  // X11
+                        | (cylinder2.backSignal_LS ? (1 << 2) : 0)  // X12
+                        | (cylinder2.frontSignal_LS ? (1 << 3) : 0)  // X13
+                        | (cylinder3.backSignal_LS ? (1 << 4) : 0)  // X14
+                        | (cylinder3.frontSignal_LS ? (1 << 5) : 0)  // X15
+                        | (cylinder4.backSignal_LS ? (1 << 6) : 0)  // X16
+                        | (cylinder4.frontSignal_LS ? (1 << 7) : 0); // X17
 
-            btnStr = $"{(metalSensor.sensorSignal == true ? 1 : 0)}{(proxSensor.sensorSignal == true ? 1 : 0)}" +
-                     $"{(loaderSensor.sensorSignal == true ? 1 : 0)}";
-            btnBlock = Convert.ToInt32(btnStr, 2);
-            plcXData[2] = btnBlock; // 5
+            int sensorBlock = (loaderSensor.sensorSignal ? (1 << 0) : 0)  // X20
+                            | (proxSensor.sensorSignal ? (1 << 1) : 0)  // X21
+                            | (metalSensor.sensorSignal ? (1 << 2) : 0); // X22
+
+            // --- [FIX 4] lock으로 보호 ---
+            lock (dataLock)
+            {
+                plcXData[0] = btnBlock;
+                plcXData[1] = lsBlock;
+                plcXData[2] = sensorBlock;
+            }
         }
 
         private void ApplyYData()
         {
-            cylinder1.backSignal_SOL  = plcYData[0,0]; // Y00
-            cylinder1.frontSignal_SOL = plcYData[0,1]; // Y01
-            cylinder2.frontSignal_SOL = plcYData[0,2]; // Y02 : 가공실린더(단솔 = 신호하나)
-            cylinder3.backSignal_SOL  = plcYData[0,3]; // Y03
-            cylinder3.frontSignal_SOL = plcYData[0,4]; // Y04
-            cylinder4.backSignal_SOL  = plcYData[0,5]; // Y05
-            cylinder4.frontSignal_SOL = plcYData[0,6]; // Y06
+            // --- [FIX 4] lock으로 보호 ---
+            bool[,] snapshot;
+            lock (dataLock)
+            {
+                snapshot = (bool[,])plcYData.Clone();
+            }
 
-            towerLamp.redLampSignal   = plcYData[1,0]; // Y10
-            towerLamp.yellowLampSignal= plcYData[1,1]; // Y11
-            towerLamp.greenLampSignal = plcYData[1,2]; // Y12
-            conveyor.cWSignal         = plcYData[1,3]; // Y13
-            conveyor.cCWSignal        = plcYData[1,4]; // Y14
-            loader.loadSignal         = plcYData[1,5]; // Y15
+            cylinder1.backSignal_SOL = snapshot[0, 0]; // Y00
+            cylinder1.frontSignal_SOL = snapshot[0, 1]; // Y01
+            cylinder2.frontSignal_SOL = snapshot[0, 2]; // Y02 : 가공실린더(단솔)
+            cylinder3.backSignal_SOL = snapshot[0, 3]; // Y03
+            cylinder3.frontSignal_SOL = snapshot[0, 4]; // Y04
+            cylinder4.backSignal_SOL = snapshot[0, 5]; // Y05
+            cylinder4.frontSignal_SOL = snapshot[0, 6]; // Y06
+
+            towerLamp.redLampSignal = snapshot[1, 0]; // Y10
+            towerLamp.yellowLampSignal = snapshot[1, 1]; // Y11
+            towerLamp.greenLampSignal = snapshot[1, 2]; // Y12
+            conveyor.cWSignal = snapshot[1, 3]; // Y13
+            conveyor.cCWSignal = snapshot[1, 4]; // Y14
+            loader.loadSignal = snapshot[1, 5]; // Y15
         }
 
         public void Open()
@@ -163,6 +178,7 @@ namespace MPS
             if (iRet == 0)
             {
                 isConnected = true;
+                currentConnectionMode = ConnectionMode.Main; // [FIX 2]
 
                 StartCoroutine(UpdatePLCData());
 
@@ -183,9 +199,12 @@ namespace MPS
 
                 int iRet = mxComponentAsync.Open();
 
-                if(iRet == 0)
+                if (iRet == 0)
                 {
                     isConnected = true;
+                    currentConnectionMode = ConnectionMode.Async; // [FIX 2]
+
+                    Debug.Log("기기가 성공적으로 연결되었습니다!");
 
                     UpdatePLCData(mxComponentAsync, cts);
                 }
@@ -196,14 +215,25 @@ namespace MPS
             });
         }
 
+        // --- [FIX 2, 3] 활성 연결 모드에 따라 올바른 객체를 닫도록 수정 ---
         public void Close()
         {
-            int iRet = mxComponent.Close();
+            ActUtlType64 target = currentConnectionMode == ConnectionMode.Async
+                                  ? mxComponentAsync
+                                  : mxComponent;
+
+            if (target == null)
+            {
+                Debug.LogWarning("닫을 연결이 없습니다.");
+                return;
+            }
+
+            int iRet = target.Close();
 
             if (iRet == 0)
             {
                 isConnected = false;
-
+                currentConnectionMode = ConnectionMode.None;
                 Debug.Log("기기가 성공적으로 연결해지 되었습니다!");
             }
             else
@@ -212,36 +242,27 @@ namespace MPS
             }
         }
 
+        // --- [FIX 3] Async 연결 해제 시 isConnected만 내리면 UpdatePLCData 루프 종료 후 Close 호출됨 ---
         public void CloseByNewThread()
         {
             isConnected = false;
+            // UpdatePLCData(ActUtlType64, CancellationTokenSource) 루프가 종료되면서 내부에서 Close() 호출
         }
 
         IEnumerator UpdatePLCData()
         {
             yield return new WaitForEndOfFrame();
 
-            while(isConnected)
+            while (isConnected)
             {
-                //stopwatch.Reset();
-                //stopwatch.Start();
                 ReadDeviceBlock("Y0", 2);
-                //stopwatch.Stop();
-                //Debug.Log($"[Read Device] {stopwatch.ElapsedMilliseconds}ms");
-
-                //stopwatch.Reset();
-                //stopwatch.Start();
                 WriteDeviceBlock("X0", 3, ref plcXData);
-                //stopwatch.Stop();
-                //Debug.Log($"[Write Device] {stopwatch.ElapsedMilliseconds}ms");
 
                 yield return new WaitForSeconds(updateInterval);
             }
         }
 
-        // 단일 스레드 원칙(STA, Single-Threaded Apartment)
-        // 객체지향언어 스레드 사용시, 객체를 만들때는 각 스레드에서 만들어야 한다.
-        // MxComponent 객체 생성안됨... ->  STA(Single-Threaded Apartment) -> 각 스레드에서 객체를 따로 관리할 수 있도록
+        // STA(Single-Threaded Apartment): MxComponent 객체는 생성한 스레드에서만 사용
         async Task UpdatePLCData(ActUtlType64 mxComponent, CancellationTokenSource cts)
         {
             while (isConnected)
@@ -250,20 +271,34 @@ namespace MPS
                 {
                     ReadDeviceBlock(mxComponent, "Y0", 2);
 
-                    WriteDeviceBlock(mxComponent, "X0", 3, ref plcXData);
+                    int[] xSnapshot;
+                    lock (dataLock)
+                    {
+                        xSnapshot = (int[])plcXData.Clone();
+                    }
+                    WriteDeviceBlock(mxComponent, "X0", 3, ref xSnapshot);
 
-                    await Task.Delay((int)updateInterval);
+                    // --- [FIX 6] updateInterval은 초 단위이므로 ms로 변환 ---
+                    // --- [FIX 7] CancellationToken 전달 ---
+                    await Task.Delay((int)(updateInterval * 1000), cts.Token);
                 }
-                catch(Exception e)
+                catch (OperationCanceledException)
                 {
-                    Debug.Log(e);
+                    Debug.Log("PLC 업데이트 루프가 취소되었습니다.");
+                    break;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
                 }
             }
 
+            // --- [FIX 3] Async 모드 종료 시 실제 Close 호출 ---
             int iRet = mxComponent.Close();
 
             if (iRet == 0)
             {
+                currentConnectionMode = ConnectionMode.None;
                 Debug.Log("기기가 성공적으로 연결해지 되었습니다!");
             }
             else
@@ -276,10 +311,10 @@ namespace MPS
         public void ReadDeviceBlock(string startDevice, int blockNum)
         {
             int[] data = new int[blockNum];
-        
+
             int iRet = mxComponent.ReadDeviceBlock(startDevice, blockNum, out data[0]);
 
-            if(iRet == 0)
+            if (iRet == 0)
             {
                 ConvertYData(data);
             }
@@ -307,20 +342,17 @@ namespace MPS
 
         private void ConvertYData(int[] data)
         {
-            // { 85, 47 } -> 85를 2진수로 0000 0000 0101 0101
-            int j = 0;
-            foreach (int d in data)
+            // --- [FIX 1] 불필요한 bool[] block 제거, 직접 plcYData에 기록 ---
+            // --- [FIX 4] lock으로 보호 ---
+            lock (dataLock)
             {
-                bool[] block = new bool[16];
-
-                for (int i = 0; i < block.Length; i++)
-                {                   // 비트연산 + 조건문
-                    bool isBitSet = ((d & (1 << i)) != 0); // 비트 비교 연산
-
-                    plcYData[j, i] = isBitSet;
+                for (int j = 0; j < data.Length; j++)
+                {
+                    for (int i = 0; i < 16; i++)
+                    {
+                        plcYData[j, i] = (data[j] & (1 << i)) != 0;
+                    }
                 }
-
-                j++;
             }
         }
 
@@ -337,7 +369,7 @@ namespace MPS
 
         private void OnDestroy()
         {
-            CloseByNewThread();
+            isConnected = false;
 
             cts.Cancel();
             cts.Dispose();
