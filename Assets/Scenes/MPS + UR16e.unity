@@ -12534,6 +12534,34 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 30173974}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OnCycleBtnClkEvent
+      objectReference: {fileID: 0}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: RobotController, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 435354056262584178, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 912742018212335092, guid: e036f4e162a86bb4ab1e84c5ee83f098, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
       value: 1

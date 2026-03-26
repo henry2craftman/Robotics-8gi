@@ -377,6 +377,12 @@ public class RobotController : MonoBehaviour
     /// <returns></returns>
     IEnumerator CoStartSequence()
     {
+        if (steps.Count == 0)
+        {
+            Debug.LogAssertion("Teaching Data가 없습니다. 데이터를 확인해 주세요.");
+            yield break;
+        }
+
         isMoving = true;
 
         // 1. 오리진으로 복귀
@@ -434,11 +440,13 @@ public class RobotController : MonoBehaviour
     /// </summary>
     public void OnCycleBtnClkEvent()
     {
-
+        if(!isMoving || !isCycle)
+            StartCoroutine(CoCycleSequence());
     }
 
     public void OnStopBtnClkEvent()
     {
         isMoving = false;
+        isCycle = false;
     }
 }
