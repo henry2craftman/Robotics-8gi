@@ -23,7 +23,7 @@ using System.Threading;
 /// 3-4. Sensors: 3개의 입력신호(Loader Sensor, 근접센서, 금속센서 각 1개)
 /// 3-5. Conveyor: 2개의 출력신호(CW, CCW)
 /// 
-// 입력 디바이스(14개)
+// 입력 디바이스(14개 + 1개)
 // X0    START BTN
 // X1	 STOP BTN
 // X2	 E-STOP BTN
@@ -37,9 +37,10 @@ using System.Threading;
 // X17	 LS7 - 배출전방
 // X20	 LOADER SENSOR
 // X21	 PROX SENSOR
-// X22	 METAL SENSOR  
+// X22	 METAL SENSOR
+// X23   UR16e E-STOP   // 입력인 이유: ROBOT 컨트롤러의 긴급정지 -> PLC에도 영향
 // 
-// 출력 디바이스(12개)
+// 출력 디바이스(12개 + 3개)
 // Y0   SOL0 - 공급후진
 // Y1	SOL1 - 공급전진
 // Y2	SOL2 - 가공전후진
@@ -52,7 +53,10 @@ using System.Threading;
 // Y12	GREEN LAMP
 // Y13	CONV CW
 // Y14	CONV CCW
-// Y15	LOADER              
+// Y15	LOADER
+// Y20  UR16e START
+// Y21  UR16e CYCLE
+// Y22  UR16e STOP
 /// </summary>
 
 namespace MPS
@@ -67,14 +71,14 @@ namespace MPS
         public bool isConnected;
         public float updateInterval = 1f; // 단위: 초
         public int xDeviceBlockNum = 3;
-        public int yDeviceBlockNum = 2;
+        public int yDeviceBlockNum = 3;
 
         // --- [FIX 4] race condition 방지를 위한 lock 객체 및 버퍼 분리 ---
         private readonly object dataLock = new object();
         private int[] plcXData = new int[3];
-        private bool[,] plcYData = new bool[2, 16];
+        private bool[,] plcYData = new bool[3, 16];
 
-        [Header("출력 가상장비 리스트")]
+        [Header("출력 장비 리스트")]
         public Cylinder cylinder1; // 공급(양솔)
         public Cylinder cylinder2; // 가공(단솔)
         public Cylinder cylinder3; // 송출(양솔)
@@ -82,8 +86,9 @@ namespace MPS
         public TowerLamp towerLamp;
         public Conveyor conveyor;
         public Loader loader;
+        public RobotController robot1;
 
-        [Header("입력 가상장비 리스트")]
+        [Header("입력 장비 리스트")]
         public bool isStartBtnActive;
         public bool isStopBtnActive;
         public bool isEStopBtnActive;
@@ -120,22 +125,30 @@ namespace MPS
         {
             // --- [FIX 5] PLC 디바이스 주소 기준: X0=bit0(START), X1=bit1(STOP), X2=bit2(ESTOP) ---
             // LSB(오른쪽)가 낮은 주소이므로 bit0=START, bit1=STOP, bit2=ESTOP 순으로 구성
-            int btnBlock = (isStartBtnActive ? (1 << 0) : 0)
-                         | (isStopBtnActive ? (1 << 1) : 0)
-                         | (isEStopBtnActive ? (1 << 2) : 0);
+            int btnBlock = (isStartBtnActive ? (1 << 0) : 0)    // X00
+                         | (isStopBtnActive  ? (1 << 1) : 0)    // X01
+                         | (isEStopBtnActive ? (1 << 2) : 0);   // X02
 
-            int lsBlock = (cylinder1.backSignal_LS ? (1 << 0) : 0)  // X10
+            int lsBlock = (cylinder1.backSignal_LS  ? (1 << 0) : 0)  // X10
                         | (cylinder1.frontSignal_LS ? (1 << 1) : 0)  // X11
-                        | (cylinder2.backSignal_LS ? (1 << 2) : 0)  // X12
+                        | (cylinder2.backSignal_LS  ? (1 << 2) : 0)  // X12
                         | (cylinder2.frontSignal_LS ? (1 << 3) : 0)  // X13
-                        | (cylinder3.backSignal_LS ? (1 << 4) : 0)  // X14
+                        | (cylinder3.backSignal_LS  ? (1 << 4) : 0)  // X14
                         | (cylinder3.frontSignal_LS ? (1 << 5) : 0)  // X15
-                        | (cylinder4.backSignal_LS ? (1 << 6) : 0)  // X16
+                        | (cylinder4.backSignal_LS  ? (1 << 6) : 0)  // X16
                         | (cylinder4.frontSignal_LS ? (1 << 7) : 0); // X17
 
             int sensorBlock = (loaderSensor.sensorSignal ? (1 << 0) : 0)  // X20
-                            | (proxSensor.sensorSignal ? (1 << 1) : 0)  // X21
-                            | (metalSensor.sensorSignal ? (1 << 2) : 0); // X22
+                            | (proxSensor.sensorSignal   ? (1 << 1) : 0)  // X21
+                            | (metalSensor.sensorSignal  ? (1 << 2) : 0); // X22
+
+            if (robot1 != null)
+            {
+                sensorBlock = (loaderSensor.sensorSignal ? (1 << 0) : 0)  // X20
+                            | (proxSensor.sensorSignal ? (1 << 1) : 0)    // X21
+                            | (metalSensor.sensorSignal ? (1 << 2) : 0)   // X22
+                            | (robot1.eStopSignal ? (1 << 3) : 0);        // X23
+            }
 
             // --- [FIX 4] lock으로 보호 ---
             lock (dataLock)
@@ -155,20 +168,27 @@ namespace MPS
                 snapshot = (bool[,])plcYData.Clone();
             }
 
-            cylinder1.backSignal_SOL = snapshot[0, 0]; // Y00
-            cylinder1.frontSignal_SOL = snapshot[0, 1]; // Y01
-            cylinder2.frontSignal_SOL = snapshot[0, 2]; // Y02 : 가공실린더(단솔)
-            cylinder3.backSignal_SOL = snapshot[0, 3]; // Y03
-            cylinder3.frontSignal_SOL = snapshot[0, 4]; // Y04
-            cylinder4.backSignal_SOL = snapshot[0, 5]; // Y05
-            cylinder4.frontSignal_SOL = snapshot[0, 6]; // Y06
+            cylinder1.backSignal_SOL   = snapshot[0, 0]; // Y00
+            cylinder1.frontSignal_SOL  = snapshot[0, 1]; // Y01
+            cylinder2.frontSignal_SOL  = snapshot[0, 2]; // Y02 : 가공실린더(단솔)
+            cylinder3.backSignal_SOL   = snapshot[0, 3]; // Y03
+            cylinder3.frontSignal_SOL  = snapshot[0, 4]; // Y04
+            cylinder4.backSignal_SOL   = snapshot[0, 5]; // Y05
+            cylinder4.frontSignal_SOL  = snapshot[0, 6]; // Y06
 
-            towerLamp.redLampSignal = snapshot[1, 0]; // Y10
+            towerLamp.redLampSignal    = snapshot[1, 0]; // Y10
             towerLamp.yellowLampSignal = snapshot[1, 1]; // Y11
-            towerLamp.greenLampSignal = snapshot[1, 2]; // Y12
-            conveyor.cWSignal = snapshot[1, 3]; // Y13
-            conveyor.cCWSignal = snapshot[1, 4]; // Y14
-            loader.loadSignal = snapshot[1, 5]; // Y15
+            towerLamp.greenLampSignal  = snapshot[1, 2]; // Y12
+            conveyor.cWSignal          = snapshot[1, 3]; // Y13
+            conveyor.cCWSignal         = snapshot[1, 4]; // Y14
+            loader.loadSignal          = snapshot[1, 5]; // Y15
+
+            if(robot1 != null)
+            {
+                robot1.startSignal         = snapshot[2, 0]; // Y20
+                robot1.cycleSignal         = snapshot[2, 1]; // Y21
+                robot1.stopSignal          = snapshot[2, 2]; // Y22
+            }
         }
 
         public void Open()
@@ -255,8 +275,8 @@ namespace MPS
 
             while (isConnected)
             {
-                ReadDeviceBlock("Y0", 2);
-                WriteDeviceBlock("X0", 3, ref plcXData);
+                ReadDeviceBlock("Y0", yDeviceBlockNum);
+                WriteDeviceBlock("X0", xDeviceBlockNum, ref plcXData);
 
                 yield return new WaitForSeconds(updateInterval);
             }
@@ -269,14 +289,14 @@ namespace MPS
             {
                 try
                 {
-                    ReadDeviceBlock(mxComponent, "Y0", 2);
+                    ReadDeviceBlock(mxComponent, "Y0", yDeviceBlockNum);
 
                     int[] xSnapshot;
                     lock (dataLock)
                     {
                         xSnapshot = (int[])plcXData.Clone();
                     }
-                    WriteDeviceBlock(mxComponent, "X0", 3, ref xSnapshot);
+                    WriteDeviceBlock(mxComponent, "X0", xDeviceBlockNum, ref xSnapshot);
 
                     // --- [FIX 6] updateInterval은 초 단위이므로 ms로 변환 ---
                     // --- [FIX 7] CancellationToken 전달 ---

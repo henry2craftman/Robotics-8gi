@@ -413,8 +413,15 @@ public class RobotController : MonoBehaviour
     {
         float curTime = 0;
 
-        while (!eStopSignal)
+        while (true)
         {
+            if (eStopSignal)
+            {
+                yield return null;
+
+                continue;
+            }
+
             curTime += Time.deltaTime;
 
             if (curTime > t)
