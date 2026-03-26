@@ -24,6 +24,13 @@ public class RobotController : MonoBehaviour
         public float speed;
     }
 
+    [Header("PLC 신호들")]
+    public bool startSignal; // Y20
+    public bool cycleSignal; // Y21
+    public bool stopSignal;  // Y22
+    public bool eStopSignal; // Y23
+
+    [Header("기타 연결들")]
     public IK_toolkit ik_toolkit;
     public List<Step> steps = new List<Step>();
     bool isXPlusOn, isXMinusOn;
@@ -46,9 +53,7 @@ public class RobotController : MonoBehaviour
     public EventTrigger yRotPlusET, yRotMinusET;
     public EventTrigger zRotPlusET, zRotMinusET;
     private Vector3 originPos;
-    public bool signleSignal;
-    public bool cycleSignal;
-    public bool stopSignal;
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -89,19 +94,19 @@ public class RobotController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (signleSignal && !isMoving)
+        if (startSignal && !isMoving)
         {
             StartCoroutine(CoStartSequence());
         }
-        else if (cycleSignal && !isMoving)
+        else if (cycleSignal && !isMoving && !isCycle)
         {
-            StartCoroutine(CoStartSequence());
+            StartCoroutine(CoCycleSequence());
         }
         else if (stopSignal)
         {
             isMoving = false;
+            isCycle = false;
         }
-
 
         if (isMoving) return;
 
@@ -295,6 +300,8 @@ public class RobotController : MonoBehaviour
 
     int stepCnt;
     private bool isMoving;
+    private bool isEStopTriggered;
+    private bool isCycle;
 
     /// <summary>
     /// 버튼을 누르면 현재 로봇의 정보가 Step으로 저장된다.
@@ -354,12 +361,24 @@ public class RobotController : MonoBehaviour
         StartCoroutine(CoStartSequence());
     }
 
+    IEnumerator CoCycleSequence()
+    {
+        isCycle = true;
+
+        while (isCycle)
+        {
+            yield return CoStartSequence();
+        }
+    }
+
     /// <summary>
     /// steps 리스트를 순회하며, 로봇을 움직인다.
     /// </summary>
     /// <returns></returns>
     IEnumerator CoStartSequence()
     {
+        isMoving = true;
+
         // 1. 오리진으로 복귀
         Vector3 curPos = ik_toolkit.ik.transform.localPosition;
         yield return CoMove(curPos, originPos, 1);
@@ -388,7 +407,7 @@ public class RobotController : MonoBehaviour
     {
         float curTime = 0;
 
-        while (true)
+        while (!eStopSignal)
         {
             curTime += Time.deltaTime;
 
