@@ -17,11 +17,18 @@ public class RobotController : MonoBehaviour
     public struct Step
     {
         public int id;
-        public Vector3 position;
-        public Quaternion rotation;
+        //public Vector3 position;
+        public float xPos, yPos, zPos;
+        //public Quaternion rotation;
+        public float xRot, yRot, zRot;
         public bool isSuctionOn;
         public float duration;
         public float speed;
+    }
+
+    public class RobotConfig
+    {
+        public List<Step> steps = new List<Step>();
     }
 
     [Header("PLC 신호들")]
@@ -309,8 +316,15 @@ public class RobotController : MonoBehaviour
     public void OnTeachBtnClkEvent()
     {
         Step step = new Step();
-        step.position = ik_toolkit.ik.localPosition;
-        step.rotation = ik_toolkit.ik.localRotation;
+        //step.position = ik_toolkit.ik.localPosition;
+        step.xPos = ik_toolkit.ik.localPosition.x;
+        step.yPos = ik_toolkit.ik.localPosition.y;
+        step.zPos = ik_toolkit.ik.localPosition.z;
+
+        //step.rotation = ik_toolkit.ik.localRotation;
+        step.xRot = ik_toolkit.ik.localRotation.eulerAngles.x;
+        step.yRot = ik_toolkit.ik.localRotation.eulerAngles.y;
+        step.zRot = ik_toolkit.ik.localRotation.eulerAngles.z;
         bool isParsed = float.TryParse(durationInput.text, out step.duration);
 
         if(!isParsed)
@@ -390,7 +404,8 @@ public class RobotController : MonoBehaviour
         yield return CoMove(curPos, originPos, 1);
 
         // 2. 첫 포지션으로 이동
-        yield return CoMove(originPos, steps[0].position, steps[0].speed);
+        //yield return CoMove(originPos, steps[0].position, steps[0].speed);
+        yield return CoMove(originPos, new Vector3(steps[0].xPos, steps[0].yPos, steps[0].zPos), steps[0].speed);
 
         yield return new WaitForSeconds(steps[0].duration - steps[0].speed);
 
@@ -400,8 +415,9 @@ public class RobotController : MonoBehaviour
             if ((i + 1) == steps.Count)
                 break;
 
-            yield return CoMove(steps[i].position, steps[i + 1].position,
-                steps[i].speed);
+            //yield return CoMove(steps[i].position, steps[i + 1].position, steps[i].speed);
+            yield return CoMove(new Vector3(steps[i].xPos, steps[i].yPos, steps[i].zPos),
+                new Vector3(steps[i + 1].xPos, steps[i + 1].yPos, steps[i + 1].zPos), steps[i].speed);
 
             yield return new WaitForSeconds(steps[0].duration - steps[0].speed);
         }

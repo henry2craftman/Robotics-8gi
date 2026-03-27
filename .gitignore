@@ -79,3 +79,6 @@ crashlytics-build.properties
 
 # SoundAsset
 /[Aa]ssets/Libraries/Soundbits_freeSFX_2025/*
+
+# Firebase SDK
+/[Aa]ssets/Firebase/*

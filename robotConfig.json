@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {
+      "id": 0,
+      "xPos": -0.04,
+      "yPos": 0.296,
+      "zPos": 0.323,
+      "xRot": 1.33055413,
+      "yRot": 180.0,
+      "zRot": -1.01798333E-12,
+      "isSuctionOn": true,
+      "duration": 2.0,
+      "speed": 1.0
+    },
+    {
+      "id": 1,
+      "xPos": -0.04,
+      "yPos": 0.5159998,
+      "zPos": 0.323,
+      "xRot": 1.33055413,
+      "yRot": 180.0,
+      "zRot": -1.01798333E-12,
+      "isSuctionOn": true,
+      "duration": 2.0,
+      "speed": 1.0
+    },
+    {
+      "id": 2,
+      "xPos": -0.04,
+      "yPos": 0.5159998,
+      "zPos": 0.5329998,
+      "xRot": 1.33055413,
+      "yRot": 180.0,
+      "zRot": -1.01798333E-12,
+      "isSuctionOn": true,
+      "duration": 2.0,
+      "speed": 1.0
+    }
+  ]
+}

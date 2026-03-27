@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "713926879808",
+    "firebase_url": "https://robotics-8gi-c203e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "robotics-8gi-c203e",
+    "storage_bucket": "robotics-8gi-c203e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:713926879808:android:0152a9bdeb4d94ba5e0da5",
+        "android_client_info": {
+          "package_name": "com.codelab.robotics8gi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbC_iJ9ouPDe_QNx1xU1BYiD2bGtYvUos"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,19 @@
+{
+  "persons": [
+    {
+      "name": "신태욱",
+      "age": 20,
+      "isStudent": true
+    },
+    {
+      "name": "김흥수",
+      "age": 22,
+      "isStudent": false
+    },
+    {
+      "name": "김하나",
+      "age": 25,
+      "isStudent": true
+    }
+  ]
+}
