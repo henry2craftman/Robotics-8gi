@@ -75,8 +75,8 @@ namespace MPS
 
         // --- [FIX 4] race condition 방지를 위한 lock 객체 및 버퍼 분리 ---
         private readonly object dataLock = new object();
-        private int[] plcXData = new int[3];
-        private bool[,] plcYData = new bool[3, 16];
+        private int[] plcXData = new int[3]; // { 35, 555, 200 }
+        private bool[,] plcYData = new bool[3, 16]; // { { true, false ... }, { true, false ... }, { true, false ... }}
 
         [Header("출력 장비 리스트")]
         public Cylinder cylinder1; // 공급(양솔)

@@ -14,9 +14,12 @@ using UnityEngine.PlayerLoop;
 /// <summary>
 /// Firebase DB URL을 사용하여 DB의 JSON을 읽어온다. DB에 데이터를 쓴다.
 /// 속성: DB Reference, url, json
+/// MxComponent로 부터 하드웨어 PLC의 디바이스 정보를 DB에 쓴다.
 /// </summary>
 public class FirebaseDBManager : MonoBehaviour
 {
+    public static FirebaseDBManager instance; // 싱글턴 객체
+
     // 직렬화(serialization) 객체 -> File
     // 역직렬화(deserialization) File -> 객체
     [Serializable]
@@ -40,6 +43,16 @@ public class FirebaseDBManager : MonoBehaviour
 
     DatabaseReference dbRef;
     public string dbUrl;
+
+    private void Awake()
+    {
+        if(instance == null)
+        {
+            instance = this;
+
+            DontDestroyOnLoad(this.gameObject); // 씬 전환이 되어도 지워지지 않는 기능
+        }
+    }
 
     void InitializeFirebase()
     {
@@ -173,6 +186,53 @@ public class FirebaseDBManager : MonoBehaviour
                 }
             });
         }
+
+        // 1. 결재완료기능
+        if(Input.GetKeyDown(KeyCode.Alpha5))
+        {
+            // 결재가 완료되면 기존 role을 user -> admin 승격(쓰기)
+            UpdateUserInfo(FirebaseAuthManager.instance.user,
+                FirebaseAuthManager.instance.userInfo);
+        }
+
+        // 2. admin일 때만 내 정보를 변경
+        if(Input.GetKeyDown(KeyCode.Alpha6))
+        {
+
+        }
+    }
+
+    private void UpdateUserInfo(FirebaseUser user, FirebaseAuthManager.User userInfo)
+    {
+        userInfo.role = "admin";
+
+        string json = JsonConvert.SerializeObject(userInfo);
+
+        dbRef.Child("users").Child(user.UserId).SetRawJsonValueAsync(json);
+    }
+
+    public void ResisterUserInfo(FirebaseUser user, FirebaseAuthManager.User userInfo)
+    {
+        string json = JsonConvert.SerializeObject(userInfo);
+
+        dbRef.Child("users").Child(user.UserId).SetRawJsonValueAsync(json);
+    }
+
+    public void RequestUserInfo(FirebaseUser user)
+    {
+        dbRef.Child("users").Child(user.UserId).GetValueAsync().ContinueWith(task => 
+        {
+            if (task.IsCompleted)
+            {
+                DataSnapshot data = task.Result;
+
+                string json = data.GetRawJsonValue();
+
+                FirebaseAuthManager.instance.userInfo = JsonConvert.DeserializeObject<FirebaseAuthManager.User>(json);
+
+                print("유저 정보를 불러왔습니다. " + user.UserId);
+            }
+        });
     }
 
     private void GetDBValueByKey(string key)
@@ -207,5 +267,10 @@ public class FirebaseDBManager : MonoBehaviour
                 }
             }
         });
+    }
+
+    public void SendPLCData(string xData, string yData)
+    {
+
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using TMPro;
@@ -23,11 +24,17 @@ public class LoginManager : MonoBehaviour
 
     [Header("회원가입 패널")]
     public GameObject signUpPanel;
+    public GameObject verificationPanel;
+    public TMP_Text verificationTxt;
     public TMP_InputField signUpIDInput;
     public TMP_InputField signUpPWInput;
     public TMP_InputField signUpPWCheckInput;
+    public TMP_InputField nameInput;
+    public TMP_InputField addressInput;
+    public TMP_InputField phoneInput;
     public Button oKBtn;
     public Button cancelBtn;
+
 
     [Header("아이디 비밀번호 리스트")]
     public Dictionary<string, string> memberList = new Dictionary<string, string>();
@@ -46,20 +53,24 @@ public class LoginManager : MonoBehaviour
 
     public void OnSignInBtnClkEvent()
     {
-        var member = memberList.FirstOrDefault(m => m.Key == signInIDInput.text);
+        FirebaseAuthManager.instance.LogIn(signInIDInput.text, signInPWInput.text);
 
-        if(member.Value == signInPWInput.text)
-        {
-            print("로그인에 성공하였습니다!");
-        }
-        else
-        {
-            Debug.LogWarning("로그인에 실패하였습니다.");
-        }
+        //var member = memberList.FirstOrDefault(m => m.Key == signInIDInput.text);
+
+        //if(member.Value == signInPWInput.text)
+        //{
+        //    print("로그인에 성공하였습니다!");
+        //}
+        //else
+        //{
+        //    Debug.LogWarning("로그인에 실패하였습니다.");
+        //}
     }
 
     public void OnExitBtnClkEvent()
     {
+        FirebaseAuthManager.instance.LogOut();
+
         Debug.LogWarning("프로그램을 종료합니다.");
 
         Application.Quit();
@@ -79,15 +90,21 @@ public class LoginManager : MonoBehaviour
 
     public void OnOKBtnClkEvent()
     {
-        var member = memberList.FirstOrDefault(m => m.Key == signUpIDInput.text);
-        print(member.Value);
-        if (member.Key == signUpIDInput.text)
-        {
-            Debug.LogWarning("이미 존재하는 아이디 입니다. 아이디를 다시 입력해 주세요.");
-        }
-        else
-        {
-            if(signUpPWInput.text != signUpPWCheckInput.text)
+        //var member = memberList.FirstOrDefault(m => m.Key == signUpIDInput.text);
+        //print(member.Value);
+        //if (member.Key == signUpIDInput.text)
+        //{
+        //    Debug.LogWarning("이미 존재하는 아이디 입니다. 아이디를 다시 입력해 주세요.");
+        //}
+        //else
+        //{
+            if(nameInput.text.Length == 0 || addressInput.text.Length == 0 || phoneInput.text.Length == 0)
+            {
+                Debug.LogWarning("필수 정보를 입력해 주세요.");
+                return;
+            }
+
+            if (signUpPWInput.text != signUpPWCheckInput.text)
             {
                 Debug.LogWarning("비밀번호가 다릅니다. 비밀번호를 확인해 주세요.");
             }
@@ -101,15 +118,30 @@ public class LoginManager : MonoBehaviour
                 }
                 else
                 {
-                    memberList.Add(signUpIDInput.text, signUpPWInput.text);
+                    // memberList.Add(signUpIDInput.text, signUpPWInput.text);
 
-                    Debug.Log("회원가입에 성공하였습니다!");
+                    FirebaseAuthManager.instance.SignUp(signUpIDInput.text, signUpPWInput.text,
+                        nameInput.text, addressInput.text, phoneInput.text);
+
+                    // Debug.Log("회원가입에 성공하였습니다!");
+                    StartCoroutine(PopUpVerificationPanel());
 
                     signInPanel.SetActive(true);
                     signUpPanel.SetActive(false);
                 }
             }
-        }
+        //}
+    }
+
+    IEnumerator PopUpVerificationPanel()
+    {
+        verificationTxt.text = $"Check verification message\n{signUpIDInput.text}";
+
+        verificationPanel.SetActive(true);
+
+        yield return new WaitForSeconds(3);
+
+        verificationPanel.SetActive(false);
     }
 
     // 정규표현식 메서드
