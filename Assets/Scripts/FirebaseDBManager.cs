@@ -39,7 +39,16 @@ public class FirebaseDBManager : MonoBehaviour
         public int total_count;
         public List<Book> books = new List<Book>();
     }
+
+    public class PLCData
+    {
+        public string plcXData;
+        public string plcYData;
+    }
+
     public LibraryData library;
+    public PLCData plcData = new PLCData();
+    public bool isDataReceived;
 
     DatabaseReference dbRef;
     public string dbUrl;
@@ -269,8 +278,32 @@ public class FirebaseDBManager : MonoBehaviour
         });
     }
 
+    
+
     public void SendPLCData(string xData, string yData)
     {
+        plcData.plcXData = xData;
+        plcData.plcYData = yData;
 
+        string json = JsonConvert.SerializeObject(plcData);
+
+        dbRef.Child("PLCData").SetRawJsonValueAsync(json);
+    }
+
+    // Slave: DB -> PLC
+    public void RequestPLCData()
+    {
+        dbRef.Child("PLCData").GetValueAsync().ContinueWith(task =>
+        {
+            if(task.IsCompleted)
+            {
+                DataSnapshot data = task.Result;
+                string json = data.GetRawJsonValue();
+
+                plcData = JsonConvert.DeserializeObject<PLCData>(json);
+
+                isDataReceived = true;
+            }
+        });
     }
 }

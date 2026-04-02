@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿#define SLAVE // MASTER or SLAVE - 전처리기: 컴파일 전에 코드 반영
+
+using UnityEngine;
 using ActUtlType64Lib;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,6 +10,7 @@ using System.Diagnostics;
 using Debug = UnityEngine.Debug;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Linq;
 
 /// <summary>
 /// PLC의 디바이스 커멘트(디바이스맵) 기반의 신호를 확인 후 디지털 트윈에 연동
@@ -76,7 +79,12 @@ namespace MPS
         // --- [FIX 4] race condition 방지를 위한 lock 객체 및 버퍼 분리 ---
         private readonly object dataLock = new object();
         private int[] plcXData = new int[3]; // { 35, 555, 200 }
-        private bool[,] plcYData = new bool[3, 16]; // { { true, false ... }, { true, false ... }, { true, false ... }}
+        private bool[,] plcYDataConverted = new bool[3, 16]; // { { true, false ... }, { true, false ... }, { true, false ... }}
+        int[] plcYData;
+        bool isDataReceived = false;
+#if SLAVE
+        bool isSlaveConnected = false;
+#endif
 
         [Header("출력 장비 리스트")]
         public Cylinder cylinder1; // 공급(양솔)
@@ -107,7 +115,8 @@ namespace MPS
             mxComponent.ActLogicalStationNumber = 0;
 
             plcXData = new int[xDeviceBlockNum];
-            plcYData = new bool[yDeviceBlockNum, 16];
+            plcYData = new int[yDeviceBlockNum];
+            plcYDataConverted = new bool[yDeviceBlockNum, 16];
 
             cts = new CancellationTokenSource();
         }
@@ -116,8 +125,36 @@ namespace MPS
         {
             if (isConnected)
             {
+                // Master, Slave 공통
                 ApplyYData();
                 ApplyXData();
+
+#if MASTER
+                // Master: PLC -> DB
+                if (isDataReceived)
+                {
+                    string xData = string.Join(",", plcXData); // { 22, 300 } -> "22,300"
+                    string yData = string.Join(",", plcYData);
+                    FirebaseDBManager.instance.SendPLCData(xData, yData);
+
+                    isDataReceived = false;
+                }
+
+#elif SLAVE
+                if(!isSlaveConnected)
+                    return;
+
+                // Slave: DB -> Digital Twin
+                FirebaseDBManager.instance.RequestPLCData();
+
+                if (FirebaseDBManager.instance.isDataReceived)
+                {                   
+                    plcXData = FirebaseDBManager.instance.plcData.plcXData.Split(',').Select(int.Parse).ToArray();
+                    plcYData = FirebaseDBManager.instance.plcData.plcYData.Split(',').Select(int.Parse).ToArray();
+
+                    FirebaseDBManager.instance.isDataReceived = false;
+                }
+#endif
             }
         }
 
@@ -161,11 +198,15 @@ namespace MPS
 
         private void ApplyYData()
         {
+#if SLAVE
+            ConvertYData(plcYData);
+#endif
+
             // --- [FIX 4] lock으로 보호 ---
             bool[,] snapshot;
             lock (dataLock)
             {
-                snapshot = (bool[,])plcYData.Clone();
+                snapshot = (bool[,])plcYDataConverted.Clone();
             }
 
             cylinder1.backSignal_SOL   = snapshot[0, 0]; // Y00
@@ -191,6 +232,7 @@ namespace MPS
             }
         }
 
+        // Master
         public void Open()
         {
             int iRet = mxComponent.Open();
@@ -210,9 +252,11 @@ namespace MPS
             }
         }
 
+        // Master
         ActUtlType64 mxComponentAsync;
         public void OpenByNewThread()
         {
+#if MASTER
             Task.Run(() =>
             {
                 mxComponentAsync = new ActUtlType64();
@@ -233,9 +277,14 @@ namespace MPS
                     Debug.LogWarning("연결이 실패하였습니다. " + iRet.ToString("X"));
                 }
             });
+
+#elif SLAVE
+            isConnected = true;
+            isSlaveConnected = true;
+#endif
         }
 
-        // --- [FIX 2, 3] 활성 연결 모드에 따라 올바른 객체를 닫도록 수정 ---
+        // Master
         public void Close()
         {
             ActUtlType64 target = currentConnectionMode == ConnectionMode.Async
@@ -262,13 +311,19 @@ namespace MPS
             }
         }
 
-        // --- [FIX 3] Async 연결 해제 시 isConnected만 내리면 UpdatePLCData 루프 종료 후 Close 호출됨 ---
+        // Master
         public void CloseByNewThread()
         {
+#if MASTER
             isConnected = false;
             // UpdatePLCData(ActUtlType64, CancellationTokenSource) 루프가 종료되면서 내부에서 Close() 호출
+#elif SLAVE
+            isConnected = false;
+            isSlaveConnected = false;
+#endif
         }
 
+        // Master
         IEnumerator UpdatePLCData()
         {
             yield return new WaitForEndOfFrame();
@@ -282,6 +337,7 @@ namespace MPS
             }
         }
 
+        // Master
         // STA(Single-Threaded Apartment): MxComponent 객체는 생성한 스레드에서만 사용
         async Task UpdatePLCData(ActUtlType64 mxComponent, CancellationTokenSource cts)
         {
@@ -327,6 +383,7 @@ namespace MPS
             }
         }
 
+        // Master
         // PLC -> PC
         public void ReadDeviceBlock(string startDevice, int blockNum)
         {
@@ -344,15 +401,16 @@ namespace MPS
             }
         }
 
+        // Master
         public void ReadDeviceBlock(ActUtlType64 mxComponent, string startDevice, int blockNum)
         {
-            int[] data = new int[blockNum];
-
-            int iRet = mxComponent.ReadDeviceBlock(startDevice, blockNum, out data[0]);
+            int iRet = mxComponent.ReadDeviceBlock(startDevice, blockNum, out plcYData[0]);
 
             if (iRet == 0)
             {
-                ConvertYData(data);
+                ConvertYData(plcYData);
+
+                isDataReceived = true;
             }
             else
             {
@@ -362,7 +420,7 @@ namespace MPS
 
         private void ConvertYData(int[] data)
         {
-            // --- [FIX 1] 불필요한 bool[] block 제거, 직접 plcYData에 기록 ---
+            // --- [FIX 1] 불필요한 bool[] block 제거, 직접 plcYDataConverted에 기록 ---
             // --- [FIX 4] lock으로 보호 ---
             lock (dataLock)
             {
@@ -370,7 +428,7 @@ namespace MPS
                 {
                     for (int i = 0; i < 16; i++)
                     {
-                        plcYData[j, i] = (data[j] & (1 << i)) != 0;
+                        plcYDataConverted[j, i] = (data[j] & (1 << i)) != 0;
                     }
                 }
             }

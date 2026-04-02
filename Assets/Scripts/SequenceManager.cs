@@ -1,5 +1,4 @@
-﻿using UnityEditor.Animations;
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// Object를 Target 방향으로 이동시킨다.
